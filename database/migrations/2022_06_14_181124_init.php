@@ -47,8 +47,8 @@ return new class extends Migration
             $table->smallInteger('draw')->default(0);
             $table->smallInteger('loss')->default(0);
             $table->smallInteger('points')->default(0);
-            $table->smallInteger('power')->default(0);
-            $table->smallInteger('prediction')->default(0);
+            $table->float('power')->default(0);
+            $table->float('prediction')->default(0);
             $table->timestamps();
         });
     }

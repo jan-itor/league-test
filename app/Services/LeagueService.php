@@ -5,9 +5,12 @@ namespace App\Services;
 
 use App\Models\Fixtures;
 use App\Models\LeagueStages;
+use App\Models\Stats;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 
-class FixtureService
+class LeagueService
 {
     /**
      * @param array $teams
@@ -32,34 +35,61 @@ class FixtureService
         return array_merge($firstPart, $lastPart);
     }
 
+    /**
+     * @throws \Exception
+     */
     public function playAllStages()
     {
-        foreach (LeagueStages::all() as $stage) {
+        $stagesToPlay = LeagueStages::whereNull(['finished_at'])->get();
+        if (!$stagesToPlay) {
+            throw new \Exception('No league stages to play');
+        }
+        foreach ($stagesToPlay as $stage) {
             $this->playSingleStage($stage);
         }
     }
 
     /**
+     * @throws \Exception
+     */
+    public function playNextStage()
+    {
+        $stageToPlay = LeagueStages::whereNull(['finished_at'])->orderBy('id', 'ASC')->first();
+        if (!$stageToPlay) {
+            throw new \Exception('No league stage to play');
+        }
+        $this->playSingleStage($stageToPlay);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function resetAllLeague()
+    {
+        DB::table('fixtures')->truncate();
+        DB::table('league_stages')->delete();
+        DB::table('stats')->truncate();
+        DB::table('teams')->delete();
+        Artisan::call('db:seed --class=InitSeeder');
+    }
+
+    /**
      * @param LeagueStages $stage
      */
-    public function playSingleStage(LeagueStages $stage)
+    private function playSingleStage(LeagueStages $stage)
     {
         foreach ($stage->fixtures as $fixture) {
             $this->playSingleFixture($fixture);
         }
         $stage->finished_at = Carbon::now();
         $stage->save();
-    }
-
-    public function playNextStage()
-    {
-        //TODO: IMPLEMENT NEXT STAGE
+        $this->calculatePredictions();
     }
 
     /**
      * @param Fixtures $fixture
      */
-    protected function playSingleFixture(Fixtures $fixture)
+    private function playSingleFixture(Fixtures $fixture)
     {
         if ($fixture->homeTeam->stats->power > $fixture->awayTeam->stats->power) {
             if ($this->isChanceWinner($fixture->awayTeam->stats->power / $fixture->homeTeam->stats->power)) {
@@ -126,7 +156,6 @@ class FixtureService
      */
     private function recalculateTeamStats(Fixtures $fixture)
     {
-        //TODO: implement prediction calculation
         $fixture->homeTeam->stats->played++;
         $fixture->awayTeam->stats->played++;
 
@@ -157,6 +186,22 @@ class FixtureService
             $fixture->awayTeam->stats->points += Fixtures::POINTS_FOR_DRAW;
             $fixture->push();
             return;
+        }
+    }
+
+    private function calculatePredictions()
+    {
+        //TODO: implement complex prediction calculation after middle of the league
+        $teamsStatsList = Stats::all();
+        $totalPoints = $teamsStatsList->sum(function ($teamStats) {
+            /** @var Stats $teamStats */
+            return $teamStats->points;
+        });
+
+        foreach ($teamsStatsList as $teamStats) {
+            /** @var Stats $teamStats */
+            $teamStats->prediction = $teamStats->points / $totalPoints * 100;
+            $teamStats->save();
         }
     }
 }

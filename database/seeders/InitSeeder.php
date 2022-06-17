@@ -6,8 +6,9 @@ use App\Models\Fixtures;
 use App\Models\LeagueStages;
 use App\Models\Stats;
 use App\Models\Teams;
+use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use App\Services\FixtureService;
+use App\Services\LeagueService;
 
 class InitSeeder extends Seeder
 {
@@ -35,12 +36,12 @@ class InitSeeder extends Seeder
 
             LeagueStages::insert(
                 [
-                    ['name' => 'Week 1'],
-                    ['name' => 'Week 2'],
-                    ['name' => 'Week 3'],
-                    ['name' => 'Week 4'],
-                    ['name' => 'Week 5'],
-                    ['name' => 'Week 6'],
+                    ['name' => 'Week 1', 'created_at' => Carbon::now()],
+                    ['name' => 'Week 2', 'created_at' => Carbon::now()],
+                    ['name' => 'Week 3', 'created_at' => Carbon::now()],
+                    ['name' => 'Week 4', 'created_at' => Carbon::now()],
+                    ['name' => 'Week 5', 'created_at' => Carbon::now()],
+                    ['name' => 'Week 6', 'created_at' => Carbon::now()],
                 ]
             );
 
@@ -57,7 +58,7 @@ class InitSeeder extends Seeder
     {
         $teams = Teams::all('id')->keyBy('id')->keys()->toArray();
         $stages = LeagueStages::all('id')->keyBy('id')->keys()->toArray();
-        $fixtureList = FixtureService::generateRoundRobin($teams);
+        $fixtureList = LeagueService::generateRoundRobin($teams);
         $countFixtures = count($fixtureList);
         $countStages = count($stages);
 
@@ -80,6 +81,7 @@ class InitSeeder extends Seeder
                     'stage_id' => $stage,
                     'home_team_id' => $fixtureTeams[0],
                     'away_team_id' => $fixtureTeams[1],
+                    'created_at' => Carbon::now()
                 ];
             }
         }

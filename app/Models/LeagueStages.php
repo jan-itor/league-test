@@ -25,6 +25,14 @@ class LeagueStages extends Model
     protected $table = 'league_stages';
 
     /**
+     * @return LeagueStages|array|Model|object|null
+     */
+    public static function getLastPlayedStage()
+    {
+        return LeagueStages::whereNotNull(['finished_at'])->orderBy('id', 'DESC')->first();
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function fixtures()

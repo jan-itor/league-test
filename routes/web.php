@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LeagueController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('home');
-});
+Route::get('/', [LeagueController::class, 'index'])->name('league.home');
+Route::get('/play-all', [LeagueController::class, 'playAll'])->name('league.play-all');
+Route::get('/play-next', [LeagueController::class, 'playNext'])->name('league.play-next');
+Route::get('/reset', [LeagueController::class, 'reset'])->name('league.reset');
+Route::get('/stages', [LeagueController::class, 'stages'])->name('league.stages');
