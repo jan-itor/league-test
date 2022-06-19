@@ -7,6 +7,7 @@ use App\Models\Fixtures;
 use App\Models\LeagueStages;
 use App\Models\Stats;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 
@@ -41,7 +42,7 @@ class LeagueService
     public function playAllStages()
     {
         $stagesToPlay = LeagueStages::whereNull(['finished_at'])->get();
-        if (!$stagesToPlay) {
+        if ($stagesToPlay->isEmpty()) {
             throw new \Exception('No league stages to play');
         }
         foreach ($stagesToPlay as $stage) {
@@ -191,8 +192,13 @@ class LeagueService
 
     private function calculatePredictions()
     {
-        //TODO: implement complex prediction calculation after middle of the league
         $teamsStatsList = Stats::all();
+        $stagesToPlay = LeagueStages::whereNull(['finished_at'])->get();
+        if ($stagesToPlay->isEmpty()) {
+            $this->setLeagueWinner($teamsStatsList);
+            return;
+        }
+
         $totalPoints = $teamsStatsList->sum(function ($teamStats) {
             /** @var Stats $teamStats */
             return $teamStats->points;
@@ -203,5 +209,108 @@ class LeagueService
             $teamStats->prediction = $teamStats->points / $totalPoints * 100;
             $teamStats->save();
         }
+
+        $this->calculatePossibleFuture($stagesToPlay);
     }
+
+    /**
+     * @param Collection<Stats> $teamsStatsList
+     */
+    public function setLeagueWinner(Collection $teamsStatsList)
+    {
+        Stats::query()->update(['prediction' => 0]);
+        /** @var Stats $leagueWinner */
+        $leagueWinner = $teamsStatsList->sortBy(function ($post) {
+            return $post->points;
+        }, SORT_NUMERIC, true)->first();
+        $leagueWinner->prediction = 100;
+        $leagueWinner->save();
+    }
+
+    /**
+     * @param Collection<LeagueStages> $stagesToPlay
+     */
+    private function calculatePossibleFuture(Collection $stagesToPlay)
+    {
+        $totalPoints = 0;
+        $predictionList = [];
+        foreach ($stagesToPlay as $stage) {
+            /** @var LeagueStages $stage */
+            foreach ($stage->fixtures as $fixture) {
+                /** @var Fixtures $fixture */
+                $predictionList[$fixture->id]['homeTeam']['points'] = $fixture->homeTeam->stats->points;
+                $predictionList[$fixture->id]['awayTeam']['points'] = $fixture->awayTeam->stats->points;
+                $predictionList[$fixture->id]['homeTeam']['power'] = $fixture->homeTeam->stats->power;
+                $predictionList[$fixture->id]['awayTeam']['power'] = $fixture->awayTeam->stats->power;
+                $this->predictSingleFixtureResults($predictionList);
+                $totalPoints += $predictionList[$fixture->id]['homeTeam']['points'] + $predictionList[$fixture->id]['awayTeam']['points'];
+            }
+        }
+
+        foreach ($predictionList as $fixtureID => $fixture) {
+            $targetFixture = Fixtures::find($fixtureID);
+            $targetFixture->homeTeam->stats->prediction = $fixture['homeTeam']['points'] / $totalPoints * 100;
+            $targetFixture->awayTeam->stats->prediction = $fixture['awayTeam']['points'] / $totalPoints * 100;
+            $targetFixture->push();
+        }
+    }
+
+    /**
+     * @param array $predictionList
+     */
+    private function predictSingleFixtureResults(array &$predictionList)
+    {
+        foreach ($predictionList as $fixture) {
+            if ($fixture['homeTeam']['power'] > $fixture['awayTeam']['power']) {
+                if ($this->isChanceWinner($fixture['awayTeam']['power'] / $fixture['homeTeam']['power'])) {
+                    $fixture['awayTeam']['score'] = $this->generateWinnerScore();
+                    $fixture['homeTeam']['score'] = $this->generateLoserScore($fixture['awayTeam']['score']);
+                    $this->predictTeamStats($fixture);
+                    return;
+                }
+                $fixture['homeTeam']['score'] = $this->generateWinnerScore();
+                $fixture['awayTeam']['score'] = $this->generateLoserScore($fixture['homeTeam']['score']);
+                $this->predictTeamStats($fixture);
+                return;
+            } else {
+                if ($this->isChanceWinner($fixture['homeTeam']['power'] / $fixture['awayTeam']['power'])) {
+                    $fixture['homeTeam']['score'] = $this->generateWinnerScore();
+                    $fixture['awayTeam']['score'] = $this->generateLoserScore($fixture['homeTeam']['score']);
+                    $this->predictTeamStats($fixture);
+                    return;
+                }
+                $fixture['awayTeam']['score'] = $this->generateWinnerScore();
+                $fixture['homeTeam']['score'] = $this->generateLoserScore($fixture['awayTeam']['score']);
+                $this->predictTeamStats($fixture);
+                return;
+            }
+        }
+    }
+
+    /**
+     * @param array $fixture
+     */
+    private function predictTeamStats(array &$fixture)
+    {
+        if ($fixture['homeTeam']['score'] > $fixture['awayTeam']['score']) {
+            $fixture['homeTeam']['points'] += Fixtures::POINTS_FOR_WIN;
+            $fixture['homeTeam']['power'] += Fixtures::POWER_AFTER_WIN;
+            $fixture['awayTeam']['power'] -= Fixtures::POWER_AFTER_LOSE;
+        }
+
+        if ($fixture['homeTeam']['score'] < $fixture['awayTeam']['score']) {
+            $fixture['awayTeam']['points'] += Fixtures::POINTS_FOR_WIN;
+            $fixture['awayTeam']['power'] += Fixtures::POWER_AFTER_WIN;
+            $fixture['homeTeam']['power'] -= Fixtures::POWER_AFTER_LOSE;
+            return;
+        }
+
+        if ($fixture['homeTeam']['score'] === $fixture['awayTeam']['score']) {
+            $fixture['homeTeam']['points'] += Fixtures::POINTS_FOR_DRAW;
+            $fixture['awayTeam']['points'] += Fixtures::POINTS_FOR_DRAW;
+            return;
+        }
+    }
+
+
 }
