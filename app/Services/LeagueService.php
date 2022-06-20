@@ -216,7 +216,7 @@ class LeagueService
     /**
      * @param Collection<Stats> $teamsStatsList
      */
-    public function setLeagueWinner(Collection $teamsStatsList)
+    private function setLeagueWinner(Collection $teamsStatsList)
     {
         Stats::query()->update(['prediction' => 0]);
         /** @var Stats $leagueWinner */
