@@ -32,6 +32,6 @@ class Stats extends Model
      */
     public function team()
     {
-        return $this->belongsTo('App\Models\Teams', 'team_id');
+        return $this->belongsTo('App\Models\Team', 'team_id');
     }
 }

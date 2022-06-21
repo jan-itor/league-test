@@ -17,13 +17,13 @@ use Illuminate\Database\Eloquent\Model;
  * @property string created_at
  * @property string updated_at
  *
- * @property Teams homeTeam
- * @property Teams awayTeam
- * @property LeagueStages stage
+ * @property Team homeTeam
+ * @property Team awayTeam
+ * @property LeagueStage stage
  *
  * @mixin Builder
  */
-class Fixtures extends Model
+class Fixture extends Model
 {
     use HasFactory;
 
@@ -46,7 +46,7 @@ class Fixtures extends Model
      */
     public function homeTeam()
     {
-        return $this->belongsTo('App\Models\Teams', 'home_team_id');
+        return $this->belongsTo('App\Models\Team', 'home_team_id');
     }
 
     /**
@@ -54,7 +54,7 @@ class Fixtures extends Model
      */
     public function awayTeam()
     {
-        return $this->belongsTo('App\Models\Teams', 'away_team_id');
+        return $this->belongsTo('App\Models\Team', 'away_team_id');
     }
 
     /**
@@ -62,7 +62,7 @@ class Fixtures extends Model
      */
     public function stage()
     {
-        return $this->belongsTo('App\Models\LeagueStages', 'stage_id');
+        return $this->belongsTo('App\Models\LeagueStage', 'stage_id');
     }
 
 }

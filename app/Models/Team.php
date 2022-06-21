@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @mixin Builder
  */
-class Teams extends Model
+class Team extends Model
 {
     use HasFactory;
 
@@ -27,7 +27,7 @@ class Teams extends Model
      */
     public function homeTeams()
     {
-        return $this->hasMany('App\Models\Fixtures', 'home_team_id');
+        return $this->hasMany('App\Models\Fixture', 'home_team_id');
     }
 
     /**
@@ -35,7 +35,7 @@ class Teams extends Model
      */
     public function awayTeams()
     {
-        return $this->hasMany('App\Models\Fixtures', 'away_team_id');
+        return $this->hasMany('App\Models\Fixture', 'away_team_id');
     }
 
     /**

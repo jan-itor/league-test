@@ -3,11 +3,8 @@
 namespace App\Http\Controllers;
 
 
-use App\Models\Fixtures;
-use App\Models\LeagueStages;
-use App\Models\Stats;
 use App\Services\LeagueService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Log\Logger;
 
 class LeagueController extends Controller
 {
@@ -15,14 +12,20 @@ class LeagueController extends Controller
      * @var LeagueService
      */
     private LeagueService $leagueService;
+    /**
+     * @var Logger
+     */
+    private Logger $logger;
 
     /**
      * LeagueController constructor.
      * @param LeagueService $leagueService
+     * @param Logger $logger
      */
-    public function __construct(LeagueService $leagueService)
+    public function __construct(LeagueService $leagueService, Logger $logger)
     {
         $this->leagueService = $leagueService;
+        $this->logger = $logger;
     }
 
     /**
@@ -31,33 +34,35 @@ class LeagueController extends Controller
     public function index()
     {
         return view('home', [
-            'teamsStats' => Stats::all(),
-            'currentResults' => LeagueStages::getLastPlayedStage(),
+            'teamsStats' => $this->leagueService->getTeamStats(),
+            'currentResults' => $this->leagueService->getLastPlayedStats(),
         ]);
     }
 
     /**
      * @return \Illuminate\Http\RedirectResponse
+     * @throws \Throwable
      */
     public function playAll()
     {
         try {
             $this->leagueService->playAllStages();
         } catch (\Exception $e) {
-            Log::alert('Play all - ' . print_r($e->getMessage(), true));
+            $this->logger->alert('Play all - ' . print_r($e->getMessage(), true));
         }
         return response()->redirectTo('/');
     }
 
     /**
      * @return \Illuminate\Http\RedirectResponse
+     * @throws \Throwable
      */
     public function playNext()
     {
         try {
             $this->leagueService->playNextStage();
         } catch (\Exception $e) {
-            Log::alert('Play next - ' . print_r($e->getMessage(), true));
+            $this->logger->alert('Play next - ' . print_r($e->getMessage(), true));
         }
         return response()->redirectTo('/');
     }
@@ -68,7 +73,7 @@ class LeagueController extends Controller
     public function stages()
     {
         return view('fixtures', [
-            'groupFixtures' => Fixtures::all()->groupBy('stage_id'),
+            'groupFixtures' => $this->leagueService->getAllFixtures(),
         ]);
     }
 
@@ -80,7 +85,7 @@ class LeagueController extends Controller
         try {
             $this->leagueService->resetAllLeague();
         } catch (\Exception $e) {
-            Log::alert('Reset - ' . print_r($e->getMessage(), true));
+            $this->logger->alert('Reset - ' . print_r($e->getMessage(), true));
         }
         return response()->redirectTo('/');
     }

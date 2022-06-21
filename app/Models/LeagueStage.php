@@ -14,22 +14,22 @@ use Illuminate\Database\Eloquent\Model;
  * @property string created_at
  * @property string updated_at
  *
- * @property Fixtures[] fixtures
+ * @property Fixture[] fixtures
  *
  * @mixin Builder
  */
-class LeagueStages extends Model
+class LeagueStage extends Model
 {
     use HasFactory;
 
     protected $table = 'league_stages';
 
     /**
-     * @return LeagueStages|array|Model|object|null
+     * @return LeagueStage|array|Model|object|null
      */
-    public static function getLastPlayedStage()
+    public function getLastPlayedStage()
     {
-        return LeagueStages::whereNotNull(['finished_at'])->orderBy('id', 'DESC')->first();
+        return $this->whereNotNull(['finished_at'])->orderBy('id', 'DESC')->first();
     }
 
     /**
@@ -37,6 +37,6 @@ class LeagueStages extends Model
      */
     public function fixtures()
     {
-        return $this->hasMany('App\Models\Fixtures', 'stage_id');
+        return $this->hasMany('App\Models\Fixture', 'stage_id');
     }
 }
