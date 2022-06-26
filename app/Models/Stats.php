@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -26,6 +27,23 @@ class Stats extends Model
     use HasFactory;
 
     protected $table = 'stats';
+
+    /**
+     * @return Collection
+     */
+    public function getAllStats(): Collection
+    {
+        return $this->get();
+    }
+
+    /**
+     * @param Stats $model
+     * @return bool
+     */
+    public function processSave(self $model): bool
+    {
+        return $model->save();
+    }
 
     /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

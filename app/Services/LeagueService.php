@@ -8,6 +8,7 @@ use App\Models\LeagueStage;
 use App\Models\Stats;
 use App\Models\Team;
 use Carbon\Carbon;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Console\Kernel;
 
@@ -33,12 +34,17 @@ class LeagueService
      * @var Kernel
      */
     private Kernel $kernel;
+    /**
+     * @var Connection
+     */
+    private Connection $connection;
 
     public function __construct(
         LeagueStage $leagueBuilder,
         Stats $statsBuilder,
         Fixture $fixtureBuilder,
         Team $teamsBuilder,
+        Connection $connection,
         Kernel $kernel
     )
     {
@@ -46,16 +52,16 @@ class LeagueService
         $this->statsBuilder = $statsBuilder;
         $this->fixturesBuilder = $fixtureBuilder;
         $this->teamsBuilder = $teamsBuilder;
+        $this->connection = $connection;
         $this->kernel = $kernel;
     }
-
 
     /**
      * @return Stats[]|Collection
      */
     public function getTeamStats(): Collection
     {
-        return $this->statsBuilder->get();
+        return $this->statsBuilder->getAllStats();
     }
 
     /**
@@ -72,20 +78,20 @@ class LeagueService
      */
     public function playAllStages(): void
     {
-        $stagesToPlay = $this->leagueStageBuilder->whereNull('finished_at')->get();
+        $stagesToPlay = $this->leagueStageBuilder->getStagesToPlay();
         if ($stagesToPlay->isEmpty()) {
             throw new \Exception('No league stages to play');
         }
 
-        $this->leagueStageBuilder->getConnection()->beginTransaction();
+        $this->connection->beginTransaction();
         try {
             foreach ($stagesToPlay as $stage) {
                 $this->playSingleStage($stage);
             }
-            $this->leagueStageBuilder->getConnection()->commit();
+            $this->connection->commit();
         } catch (\Exception $e) {
-            $this->leagueStageBuilder->getConnection()->rollback();
-            throw new \Exception('No league stages to play' . print_r($e->getMessage(), true));
+            $this->connection->rollback();
+            throw new \Exception('Play All Stages error:' . print_r($e->getMessage(), true));
         }
     }
 
@@ -95,7 +101,7 @@ class LeagueService
      */
     public function playNextStage(): void
     {
-        $stageToPlay = $this->leagueStageBuilder->whereNull('finished_at')->orderBy('id')->first();
+        $stageToPlay = $this->leagueStageBuilder->getNextStageToPlay();
         if (!$stageToPlay) {
             throw new \Exception('No league stage to play');
         }
@@ -119,7 +125,7 @@ class LeagueService
      */
     public function getAllFixtures(): Collection
     {
-        return $this->fixturesBuilder->get()->groupBy('stage_id');
+        return $this->fixturesBuilder->getFixturesGroupedByStages();
     }
 
     /**
@@ -128,18 +134,18 @@ class LeagueService
      */
     private function playSingleStage(LeagueStage $stage): void
     {
-        $this->leagueStageBuilder->getConnection()->beginTransaction();
+        $this->connection->beginTransaction();
         try {
             foreach ($stage->fixtures as $fixture) {
                 $this->playSingleFixture($fixture);
             }
             $stage->finished_at = Carbon::now();
-            $stage->save();
+            $this->leagueStageBuilder->processSave($stage);
             $this->calculatePredictions();
-            $this->leagueStageBuilder->getConnection()->commit();
+            $this->connection->commit();
         } catch (\Exception $e) {
-            $this->leagueStageBuilder->getConnection()->rollback();
-            throw new \Exception('No league stages to play' . print_r($e->getMessage(), true));
+            $this->connection->rollback();
+            throw new \Exception('Play Single Stage ' . print_r($e->getMessage(), true));
         }
     }
 
@@ -153,14 +159,14 @@ class LeagueService
                 $fixture->away_team_score = $this->generateWinnerScore();
                 $fixture->home_team_score = $this->generateLoserScore($fixture->away_team_score);
                 $fixture->played_at = Carbon::now();
-                $fixture->save();
+                $this->fixturesBuilder->processSave($fixture);
                 $this->recalculateTeamStats($fixture);
                 return;
             }
             $fixture->home_team_score = $this->generateWinnerScore();
             $fixture->away_team_score = $this->generateLoserScore($fixture->home_team_score);
             $fixture->played_at = Carbon::now();
-            $fixture->save();
+            $this->fixturesBuilder->processSave($fixture);
             $this->recalculateTeamStats($fixture);
             return;
         } else {
@@ -168,14 +174,14 @@ class LeagueService
                 $fixture->home_team_score = $this->generateWinnerScore();
                 $fixture->away_team_score = $this->generateLoserScore($fixture->home_team_score);
                 $fixture->played_at = Carbon::now();
-                $fixture->save();
+                $this->fixturesBuilder->processSave($fixture);
                 $this->recalculateTeamStats($fixture);
                 return;
             }
             $fixture->away_team_score = $this->generateWinnerScore();
             $fixture->home_team_score = $this->generateLoserScore($fixture->away_team_score);
             $fixture->played_at = Carbon::now();
-            $fixture->save();
+            $this->fixturesBuilder->processSave($fixture);
             $this->recalculateTeamStats($fixture);
             return;
         }
@@ -222,7 +228,7 @@ class LeagueService
             $fixture->homeTeam->stats->power += Fixture::POWER_AFTER_WIN;
             $fixture->awayTeam->stats->loss++;
             $fixture->awayTeam->stats->power -= Fixture::POWER_AFTER_LOSE;
-            $fixture->push();
+            $this->fixturesBuilder->processPush($fixture);
             return;
         }
 
@@ -232,7 +238,7 @@ class LeagueService
             $fixture->awayTeam->stats->power += Fixture::POWER_AFTER_WIN;
             $fixture->homeTeam->stats->loss++;
             $fixture->homeTeam->stats->power -= Fixture::POWER_AFTER_LOSE;
-            $fixture->push();
+            $this->fixturesBuilder->processPush($fixture);
             return;
         }
 
@@ -241,15 +247,15 @@ class LeagueService
             $fixture->homeTeam->stats->points += Fixture::POINTS_FOR_DRAW;
             $fixture->awayTeam->stats->draw++;
             $fixture->awayTeam->stats->points += Fixture::POINTS_FOR_DRAW;
-            $fixture->push();
+            $this->fixturesBuilder->processPush($fixture);
             return;
         }
     }
 
     private function calculatePredictions(): void
     {
-        $teamsStatsList = $this->statsBuilder->get();
-        $stagesToPlay = $this->leagueStageBuilder->whereNull('finished_at')->get();
+        $teamsStatsList = $this->statsBuilder->getAllStats();
+        $stagesToPlay = $this->leagueStageBuilder->getStagesToPlay();
         if ($stagesToPlay->isEmpty()) {
             $this->setLeagueWinner($teamsStatsList);
             return;
@@ -263,7 +269,7 @@ class LeagueService
         foreach ($teamsStatsList as $teamStats) {
             /** @var Stats $teamStats */
             $teamStats->prediction = $teamStats->points / $totalPoints * 100;
-            $teamStats->save();
+            $this->statsBuilder->processSave($teamStats);
         }
 
         $this->calculatePossibleFuture($stagesToPlay);
@@ -280,7 +286,7 @@ class LeagueService
             return $post->points;
         }, SORT_NUMERIC, true)->first();
         $leagueWinner->prediction = 100;
-        $leagueWinner->save();
+        $this->statsBuilder->processSave($leagueWinner);
     }
 
     /**
@@ -303,12 +309,13 @@ class LeagueService
             }
         }
 
-        $fixturesList = $this->fixturesBuilder->whereIn('id', array_keys($predictionList))->get()->keyBy('id');
+        $fixturesList = $this->fixturesBuilder->getFixturesByIds(array_keys($predictionList));
         foreach ($predictionList as $fixtureID => $fixture) {
+            /** @var Fixture $targetFixture */
             $targetFixture = $fixturesList->find($fixtureID);
             $targetFixture->homeTeam->stats->prediction = $fixture['homeTeam']['points'] / $totalPoints * 100;
             $targetFixture->awayTeam->stats->prediction = $fixture['awayTeam']['points'] / $totalPoints * 100;
-            $targetFixture->push();
+            $this->fixturesBuilder->processPush($targetFixture);
         }
     }
 

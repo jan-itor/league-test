@@ -33,6 +33,31 @@ class LeagueStage extends Model
     }
 
     /**
+     * @return LeagueStage|array|Model|object|null
+     */
+    public function getNextStageToPlay()
+    {
+        return $this->whereNull('finished_at')->orderBy('id')->first();
+    }
+
+    /**
+     * @return LeagueStage[]|\Illuminate\Database\Eloquent\Collection
+     */
+    public function getStagesToPlay()
+    {
+        return $this->whereNull('finished_at')->get();
+    }
+
+    /**
+     * @param LeagueStage $model
+     * @return bool
+     */
+    public function processSave(self $model): bool
+    {
+        return $model->save();
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\HasMany
      */
     public function fixtures()

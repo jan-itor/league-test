@@ -42,6 +42,41 @@ class Fixture extends Model
     protected $guarded = [];
 
     /**
+     * @param Fixture $model
+     * @return bool
+     */
+    public function processSave(self $model): bool
+    {
+        return $model->save();
+    }
+
+    /**
+     * @param Fixture $model
+     * @return bool
+     */
+    public function processPush(self $model): bool
+    {
+        return $model->push();
+    }
+
+    /**
+     * @param array $idList
+     * @return Fixture[]|\Illuminate\Database\Eloquent\Collection
+     */
+    public function getFixturesByIds(array $idList)
+    {
+        return $this->whereIn('id', $idList)->get()->keyBy('id');
+    }
+
+    /**
+     * @return Fixture[]|\Illuminate\Database\Eloquent\Collection
+     */
+    public function getFixturesGroupedByStages()
+    {
+        return $this->get()->groupBy('stage_id');
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function homeTeam()
