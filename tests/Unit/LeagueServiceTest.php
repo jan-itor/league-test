@@ -49,7 +49,6 @@ class LeagueServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        //TODO: add exceptions coverage
         parent::setUp();
 
         $this->leagueStageBuilderStub = $this->getMockBuilder(LeagueStage::class)->getMock();
@@ -69,7 +68,7 @@ class LeagueServiceTest extends TestCase
         );
     }
 
-    public function testTeamStatsFound()
+    public function testTeamStatsFound(): void
     {
         $this->statsBuilderStub
             ->expects(self::once())
@@ -78,7 +77,7 @@ class LeagueServiceTest extends TestCase
         $this->triggeredService->getTeamStats();
     }
 
-    public function testLastPlayedStats()
+    public function testLastPlayedStats(): void
     {
         $this->leagueStageBuilderStub
             ->expects(self::once())
@@ -87,10 +86,10 @@ class LeagueServiceTest extends TestCase
         $this->triggeredService->getLastPlayedStats();
     }
 
-    public function testPlayAll()
+    public function testPlayAll(): void
     {
         $this->leagueStageBuilderStub
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly(3))
             ->method('getStagesToPlay')
             ->willReturn((new Collection())->add($this->getLeagueStageStub(true))->add($this->getLeagueStageStub(true)));
 
@@ -104,14 +103,18 @@ class LeagueServiceTest extends TestCase
             ->method('processSave')
             ->willReturn(true);
 
+        $this->statsBuilderStub
+            ->expects(self::exactly(2))
+            ->method('getAllStats')
+            ->willReturn((new Collection())->add($this->getStatsStub())->add($this->getStatsStub()));
+
         $this->fixturesBuilderStub
-            ->expects(self::atLeastOnce())
+            ->expects(self::exactly(2))
             ->method('getFixturesByIds')
             ->willReturn((new Collection())->add($this->getFixtureStub())->add($this->getFixtureStub()));
 
-        //TODO:check never - coverage
         $this->statsBuilderStub
-            ->expects(self::never())
+            ->expects(self::atLeastOnce())
             ->method('processSave')
             ->willReturn(true);
 
@@ -123,7 +126,41 @@ class LeagueServiceTest extends TestCase
         $this->triggeredService->playAllStages();
     }
 
-    public function testPlayNextStage()
+    public function testNoStagesPlayAll(): void
+    {
+        $this->leagueStageBuilderStub
+            ->expects(self::once())
+            ->method('getStagesToPlay')
+            ->willReturn((new Collection()));
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('processPush');
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('getFixturesByIds');
+
+        $this->statsBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        $this->leagueStageBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        try {
+            $this->triggeredService->playAllStages();
+        } catch (\Throwable $e) {
+            $this->assertStringContainsString('No league stages to play', $e->getMessage());
+        }
+    }
+
+    public function testPlayNextStage(): void
     {
         $this->leagueStageBuilderStub
             ->expects(self::once())
@@ -140,9 +177,13 @@ class LeagueServiceTest extends TestCase
             ->method('getFixturesByIds')
             ->willReturn((new Collection())->add($this->getFixtureStub())->add($this->getFixtureStub()));
 
-        //TODO:check never - coverage
         $this->statsBuilderStub
-            ->expects(self::never())
+            ->expects(self::once())
+            ->method('getAllStats')
+            ->willReturn((new Collection())->add($this->getStatsStub())->add($this->getStatsStub()));
+
+        $this->statsBuilderStub
+            ->expects(self::atLeastOnce())
             ->method('processSave')
             ->willReturn(true);
 
@@ -154,7 +195,76 @@ class LeagueServiceTest extends TestCase
         $this->triggeredService->playNextStage();
     }
 
-    public function testAllGroupedFixtures()
+    public function testNoStagesPlayNext(): void
+    {
+        $this->leagueStageBuilderStub
+            ->expects(self::once())
+            ->method('getNextStageToPlay')
+            ->willReturn(null);
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('processPush');
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('getFixturesByIds');
+
+        $this->statsBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        $this->leagueStageBuilderStub
+            ->expects(self::never())
+            ->method('processSave');
+
+        try {
+            $this->triggeredService->playNextStage();
+        } catch (\Throwable $e) {
+            $this->assertStringContainsString('No league stage to play', $e->getMessage());
+        }
+    }
+
+    public function testSetLeagueWinner(): void
+    {
+        $this->leagueStageBuilderStub
+            ->expects(self::once())
+            ->method('getNextStageToPlay')
+            ->willReturn($this->getLeagueStageStub(true));
+
+        $this->leagueStageBuilderStub
+            ->expects(self::atLeastOnce())
+            ->method('getStagesToPlay')
+            ->willReturn((new Collection()));
+
+        $this->fixturesBuilderStub
+            ->expects(self::never())
+            ->method('getFixturesByIds')
+            ->willReturn((new Collection())->add($this->getFixtureStub())->add($this->getFixtureStub()));
+
+        $this->statsBuilderStub
+            ->expects(self::once())
+            ->method('getAllStats')
+            ->willReturn((new Collection())->add($this->getStatsStub())->add($this->getStatsStub()));
+
+        $this->statsBuilderStub
+            ->expects(self::atLeastOnce())
+            ->method('processSave')
+            ->willReturn(true);
+
+        $this->leagueStageBuilderStub
+            ->expects(self::atLeastOnce())
+            ->method('processSave')
+            ->willReturn(true);
+
+        $this->triggeredService->playNextStage();
+    }
+
+    public function testAllGroupedFixtures(): void
     {
         $this->fixturesBuilderStub
             ->expects(self::once())

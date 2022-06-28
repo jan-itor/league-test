@@ -280,7 +280,7 @@ class LeagueService
      */
     private function setLeagueWinner(Collection $teamsStatsList): void
     {
-        $this->statsBuilder->getQuery()->update(['prediction' => 0]);
+        $this->statsBuilder->resetAllPredictions();
         /** @var Stats $leagueWinner */
         $leagueWinner = $teamsStatsList->sortBy(function ($post) {
             return $post->points;

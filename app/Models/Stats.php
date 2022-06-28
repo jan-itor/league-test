@@ -46,6 +46,14 @@ class Stats extends Model
     }
 
     /**
+     * @return int
+     */
+    public function resetAllPredictions(): int
+    {
+        return $this->update(['prediction' => 0]);
+    }
+
+    /**
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
      */
     public function team()
