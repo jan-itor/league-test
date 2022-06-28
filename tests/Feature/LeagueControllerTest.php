@@ -34,6 +34,17 @@ class LeagueControllerTest extends TestCase
         $response->assertStatus(302);
     }
 
+    public function test_play_all_with_exception()
+    {
+        $this->mock(LeagueService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('playAllStages')->andThrow('Exception');
+        });
+
+        $response = $this->get('/play-all');
+
+        $response->assertStatus(400);
+    }
+
     public function test_play_next()
     {
         $this->mock(LeagueService::class, function (MockInterface $mock) {
@@ -45,6 +56,16 @@ class LeagueControllerTest extends TestCase
         $response->assertStatus(302);
     }
 
+    public function test_play_next_with_exception()
+    {
+        $this->mock(LeagueService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('playNextStage')->andThrow('Exception');
+        });
+
+        $response = $this->get('/play-next');
+
+        $response->assertStatus(400);
+    }
 
     public function test_stages()
     {
@@ -62,5 +83,16 @@ class LeagueControllerTest extends TestCase
         $response = $this->get('/reset');
 
         $response->assertStatus(302);
+    }
+
+    public function test_reset_with_exception()
+    {
+        $this->mock(LeagueService::class, function (MockInterface $mock) {
+            $mock->shouldReceive('resetAllLeague')->andThrow('Exception');
+        });
+
+        $response = $this->get('/reset');
+
+        $response->assertStatus(400);
     }
 }

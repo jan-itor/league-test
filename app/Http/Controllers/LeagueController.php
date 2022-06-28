@@ -40,7 +40,7 @@ class LeagueController extends Controller
     }
 
     /**
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\RedirectResponse|\Illuminate\Http\Response
      * @throws \Throwable
      */
     public function playAll()
@@ -49,12 +49,13 @@ class LeagueController extends Controller
             $this->leagueService->playAllStages();
         } catch (\Exception $e) {
             $this->logger->alert('Play all - ' . print_r($e->getMessage(), true));
+            return response('See errors in logs', 400);
         }
         return response()->redirectTo('/');
     }
 
     /**
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\RedirectResponse|\Illuminate\Http\Response
      * @throws \Throwable
      */
     public function playNext()
@@ -63,6 +64,7 @@ class LeagueController extends Controller
             $this->leagueService->playNextStage();
         } catch (\Exception $e) {
             $this->logger->alert('Play next - ' . print_r($e->getMessage(), true));
+            return response('See errors in logs', 400);
         }
         return response()->redirectTo('/');
     }
@@ -78,7 +80,7 @@ class LeagueController extends Controller
     }
 
     /**
-     * @return \Illuminate\Http\RedirectResponse
+     * @return \Illuminate\Contracts\Routing\ResponseFactory|\Illuminate\Http\RedirectResponse|\Illuminate\Http\Response
      */
     public function reset()
     {
@@ -86,6 +88,7 @@ class LeagueController extends Controller
             $this->leagueService->resetAllLeague();
         } catch (\Exception $e) {
             $this->logger->alert('Reset - ' . print_r($e->getMessage(), true));
+            return response('See errors in logs', 400);
         }
         return response()->redirectTo('/');
     }
