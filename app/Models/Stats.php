@@ -50,7 +50,7 @@ class Stats extends Model
      */
     public function resetAllPredictions(): int
     {
-        return $this->update(['prediction' => 0]);
+        return $this->getQuery()->update(['prediction' => 0]);
     }
 
     /**

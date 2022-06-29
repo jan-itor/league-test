@@ -49,7 +49,7 @@ class LeagueController extends Controller
             $this->leagueService->playAllStages();
         } catch (\Exception $e) {
             $this->logger->alert('Play all - ' . print_r($e->getMessage(), true));
-            return response('See errors in logs', 400);
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
         return response()->redirectTo('/');
     }
@@ -64,7 +64,7 @@ class LeagueController extends Controller
             $this->leagueService->playNextStage();
         } catch (\Exception $e) {
             $this->logger->alert('Play next - ' . print_r($e->getMessage(), true));
-            return response('See errors in logs', 400);
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
         return response()->redirectTo('/');
     }
@@ -88,7 +88,7 @@ class LeagueController extends Controller
             $this->leagueService->resetAllLeague();
         } catch (\Exception $e) {
             $this->logger->alert('Reset - ' . print_r($e->getMessage(), true));
-            return response('See errors in logs', 400);
+            return redirect()->back()->withErrors(['error' => $e->getMessage()]);
         }
         return response()->redirectTo('/');
     }

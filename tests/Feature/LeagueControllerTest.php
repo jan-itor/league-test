@@ -42,7 +42,7 @@ class LeagueControllerTest extends TestCase
 
         $response = $this->get('/play-all');
 
-        $response->assertStatus(400);
+        $response->assertStatus(302);
     }
 
     public function test_play_next()
@@ -64,7 +64,7 @@ class LeagueControllerTest extends TestCase
 
         $response = $this->get('/play-next');
 
-        $response->assertStatus(400);
+        $response->assertStatus(302);
     }
 
     public function test_stages()
@@ -93,6 +93,6 @@ class LeagueControllerTest extends TestCase
 
         $response = $this->get('/reset');
 
-        $response->assertStatus(400);
+        $response->assertStatus(302);
     }
 }
